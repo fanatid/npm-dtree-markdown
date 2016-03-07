@@ -1,0 +1,33 @@
+{
+  "name": "npm-rdtree-markdown",
+  "version": "1.0.0",
+  "description": "print recursive dependency tree in markdown",
+  "homepage": "https://github.com/fanatid/npm-rdtree-markdown",
+  "bugs": {
+    "url": "https://github.com/fanatid/npm-rdtree-markdown/issues"
+  },
+  "license": "MIT",
+  "author": "Kirill Fomichev <fanatid@ya.ru> (http://github.com/fanatid)",
+  "files": [
+    "npm-rdtree-markdown.js"
+  ],
+  "main": "./npm-rdtree-markdown.js",
+  "bin": {
+    "npm-rdtree-markdown": "./npm-rdtree-markdown.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fanatid/npm-rdtree-markdown.git"
+  },
+  "scripts": {
+    "lint": "standard"
+  },
+  "dependencies": {
+    "co": "^4.6.0",
+    "semver": "^5.1.0"
+  },
+  "devDependencies": {
+    "standard": "^6.0.7"
+  },
+  "private": true
+}
