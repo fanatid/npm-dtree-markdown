@@ -24,10 +24,10 @@
   },
   "dependencies": {
     "co": "^4.6.0",
-    "semver": "^5.1.0"
+    "semver": "^5.1.0",
+    "yargs": "^4.2.0"
   },
   "devDependencies": {
     "standard": "^6.0.7"
-  },
-  "private": true
+  }
 }

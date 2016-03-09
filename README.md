@@ -9,7 +9,7 @@
 ## Installation
 
 ```shell
-$ npm i https://github.com/fanatid/npm-rdtree-markdown -g
+$ npm i npm-rdtree-markdown -g
 $ npm-rdtree-markdown crypto-browserify
 ...
 $ cd work-directory/crypto-browserify

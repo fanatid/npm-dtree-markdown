@@ -6,9 +6,20 @@ var path = require('path')
 var co = require('co')
 var semver = require('semver')
 
+var argv = require('yargs').command('npm-rdtree-markdown <package>')
+  .option('s', {
+    alias: 'silent',
+    demand: false,
+    type: 'boolean',
+    describe: 'Silent mode',
+    default: false
+  })
+  .help()
+  .argv
+
 function getPackageInfo (name) {
   return new Promise((resolve, reject) => {
-    console.log(`Request http://registry.npmjs.org/${name}`)
+    if (!argv.silent) console.log(`Request http://registry.npmjs.org/${name}`)
     let req = http.request({ host: 'registry.npmjs.org', path: `/${name}` }, (res) => {
       let body = ''
       res.on('error', (err) => reject(err))
@@ -24,7 +35,7 @@ function getPackageInfo (name) {
 
 co.wrap(function * () {
   let packageInfoRoot = yield co.wrap(function * () {
-    if (process.argv[2]) return yield getPackageInfo(process.argv[2])
+    if (argv._[0]) return yield getPackageInfo(argv._[0])
     var fullPath = path.join(process.cwd(), 'package.json')
     var content = fs.readFileSync(fullPath, { encoding: 'utf-8' })
     return JSON.parse(content)
@@ -63,8 +74,10 @@ co.wrap(function * () {
     if (!packages[item.name]) processInfo(item, yield getPackageInfo(item.name))
   }
 
-  console.log('Data collection is finished!')
-  console.log('================================================================================')
+  if (!argv.silent) {
+    console.log('Data collection is finished!')
+    console.log('================================================================================')
+  }
 
   // generate dependencies tree
   ;(function printTree (name, padding) {
@@ -85,5 +98,7 @@ co.wrap(function * () {
     console.log(`| <h6><a href="https://github.com/${info.github}">${name}</a></h6> | [![](https://img.shields.io/npm/v/${name}.svg?style=flat-square)](https://www.npmjs.org/package/${name}) | [![](https://img.shields.io/david/${info.github}.svg?style=flat-square)](https://david-dm.org/${info.github}#info=dependencies) | [![](https://img.shields.io/github/issues-raw/${info.github}.svg?style=flat-square)](https://github.com/${info.github}/issues) |`)
   })
 
-  console.log('================================================================================')
+  if (!argv.silent) {
+    console.log('================================================================================')
+  }
 })().catch((err) => console.error(err.stack || err))
