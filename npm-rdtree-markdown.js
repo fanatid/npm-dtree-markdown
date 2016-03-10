@@ -6,7 +6,7 @@ var path = require('path')
 var co = require('co')
 var semver = require('semver')
 
-var argv = require('yargs').command('npm-rdtree-markdown <package>')
+var argv = require('yargs').command('npm-rdtree-markdown <package/path-to-package.json>')
   .option('s', {
     alias: 'silent',
     demand: false,
@@ -17,9 +17,13 @@ var argv = require('yargs').command('npm-rdtree-markdown <package>')
   .help()
   .argv
 
+function log (silent, data) {
+  if (!silent) console.log(data)
+}
+
 function getPackageInfo (name) {
   return new Promise((resolve, reject) => {
-    if (!argv.silent) console.log(`Request http://registry.npmjs.org/${name}`)
+    log(argv.silent, `Request http://registry.npmjs.org/${name}`)
     let req = http.request({ host: 'registry.npmjs.org', path: `/${name}` }, (res) => {
       let body = ''
       res.on('error', (err) => reject(err))
@@ -35,20 +39,27 @@ function getPackageInfo (name) {
 
 co.wrap(function * () {
   let packageInfoRoot = yield co.wrap(function * () {
-    if (argv._[0]) return yield getPackageInfo(argv._[0])
-    var fullPath = path.join(process.cwd(), 'package.json')
-    var content = fs.readFileSync(fullPath, { encoding: 'utf-8' })
-    return JSON.parse(content)
+    let arg = argv._[0] || path.join(process.cwd(), 'package.json')
+    try {
+      return JSON.parse(fs.readFileSync(arg, { encoding: 'utf-8' }))
+    } catch (err) {
+      if (/package\.json$/.test(arg)) throw err
+      return yield getPackageInfo(arg)
+    }
   })()
 
   let packages = {}
   let queue = []
 
-  function processInfo (item, info) {
+  function getLatestDependencies (info) {
+    if (!info.versions) return info.dependencies
     let versions = Object.keys(info.versions).sort(semver.compareLoose)
     let latestVersion = versions[versions.length - 1]
-    let latestDependencies = info.versions[latestVersion].dependencies || {}
-    let dependencies = Object.keys(latestDependencies).sort().map((name) => {
+    return info.versions[latestVersion].dependencies
+  }
+
+  function processInfo (item, info) {
+    let dependencies = Object.keys(getLatestDependencies(info) || {}).sort().map((name) => {
       return { name, deep: false }
     })
 
@@ -74,31 +85,27 @@ co.wrap(function * () {
     if (!packages[item.name]) processInfo(item, yield getPackageInfo(item.name))
   }
 
-  if (!argv.silent) {
-    console.log('Data collection is finished!')
-    console.log('================================================================================')
-  }
+  log(argv.silent, 'Data collection is finished!')
+  log(argv.silent, '================================================================================')
 
   // generate dependencies tree
   ;(function printTree (name, padding) {
-    console.log(`${padding}- [${name}](#${name.replace(/\./g, '')})`)
+    log(false, `${padding}- [${name}](#${name.replace(/\./g, '')})`)
     for (let item of packages[name].dependencies) {
       if (item.deep) {
         printTree(item.name, padding + '  ')
       } else {
-        console.log(`${padding}  - [${item.name}](#${item.name.replace(/\./g, '')})`)
+        log(false, `${padding}  - [${item.name}](#${item.name.replace(/\./g, '')})`)
       }
     }
   })(packageInfoRoot.name, '')
 
   // generate table
-  console.log(`\n| package | npm | dependencies | github issues |\n|:-:|:-:|:-:|:-:|`)
+  log(false, `\n| package | npm | dependencies | github issues |\n|:-:|:-:|:-:|:-:|`)
   Object.keys(packages).sort().forEach((name) => {
     let info = packages[name]
-    console.log(`| <h6><a href="https://github.com/${info.github}">${name}</a></h6> | [![](https://img.shields.io/npm/v/${name}.svg?style=flat-square)](https://www.npmjs.org/package/${name}) | [![](https://img.shields.io/david/${info.github}.svg?style=flat-square)](https://david-dm.org/${info.github}#info=dependencies) | [![](https://img.shields.io/github/issues-raw/${info.github}.svg?style=flat-square)](https://github.com/${info.github}/issues) |`)
+    log(false, `| <h6><a href="https://github.com/${info.github}">${name}</a></h6> | [![](https://img.shields.io/npm/v/${name}.svg?style=flat-square)](https://www.npmjs.org/package/${name}) | [![](https://img.shields.io/david/${info.github}.svg?style=flat-square)](https://david-dm.org/${info.github}#info=dependencies) | [![](https://img.shields.io/github/issues-raw/${info.github}.svg?style=flat-square)](https://github.com/${info.github}/issues) |`)
   })
 
-  if (!argv.silent) {
-    console.log('================================================================================')
-  }
+  log(argv.silent, '================================================================================')
 })().catch((err) => console.error(err.stack || err))
